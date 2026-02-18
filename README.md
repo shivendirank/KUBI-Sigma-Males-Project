@@ -1,6 +1,29 @@
 # KUBI-Sigma-Males-Project
 This is the official repo for the KUBI Sigma Males for the Monad Blitz Hackathon
 
+## ✨ Features
+
+🔥 **Real-Time Multi-User Platform** - Powered by Firebase Firestore
+- Live confession feed across all users
+- Real-time voting and reactions
+- Instant reply/roast synchronization
+- Connection status indicator
+
+🎮 **Interactive Experience**
+- Yik-Yak style anonymous confessions
+- Email-style cards with animations
+- Upvote/downvote system (vote once per confession)
+- Nested reply threads with visual indentation
+- Pizza token economy (1 token per confession)
+- Wall of Fame showcasing top posts by engagement
+
+🎨 **Beautiful UI/UX**
+- GLSL animated hills background
+- Custom pizza slice cursor
+- Framer Motion animations
+- Responsive design
+- Dark mode themed
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -20,34 +43,96 @@ This is the official repo for the KUBI Sigma Males for the Monad Blitz Hackathon
    - Framer Motion (animations)
    - Lucide React (icons)
    - Three.js (3D graphics)
+   - Firebase SDK (real-time database)
+   - ShadCN UI components
 
-2. **Start development server:**
+2. **Configure Firebase (Required for real-time features):**
+   
+   See **[FIREBASE_SETUP.md](./FIREBASE_SETUP.md)** for detailed instructions.
+   
+   Quick steps:
+   - Create a Firebase project
+   - Enable Firestore Database
+   - Update `src/lib/firebase.ts` with your credentials
+
+3. **Start development server:**
    ```bash
    npm run dev
    ```
 
-3. **Build for production:**
+4. **Build for production:**
    ```bash
    npm run build
    ```
 
-4. **Preview production build:**
+5. **Preview production build:**
    ```bash
    npm run preview
    ```
 
-## 📁 Project Structure
+## 🔥 Testing Real-Time Features
+
+### Quick Test (Same Computer)
+1. Open the app in Chrome: http://localhost:5174
+2. Open the app in Incognito mode  
+3. Post a confession in one window
+4. Watch it appear instantly in the other! 🎉
+
+### Multi-Device Test
+1. Find your local IP: `ipconfig` (Windows) or `ifconfig` (Mac/Linux)
+2. On mobile: Navigate to `http://YOUR_IP:5174`
+3. Post from phone, see on computer in real-time!
+
+See **[REALTIME_FEATURES.md](./REALTIME_FEATURES.md)** for comprehensive testing guide.
+
+## � Deploy to Production
+
+### Vercel (Recommended - 1 Click Deploy)
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone)
+
+**Quick Deploy:**
+```bash
+npm install -g vercel
+vercel
+```
+
+**Important:** Add Firebase environment variables to Vercel:
+1. Vercel Dashboard → Settings → Environment Variables
+2. Add all `VITE_FIREBASE_*` variables (see `.env.template`)
+3. Redeploy
+
+See **[VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md)** for complete deployment guide.
+
+### Other Options
+- **Netlify**: `npm run build` → Deploy `dist` folder
+- **Firebase Hosting**: `firebase init hosting && firebase deploy`
+- **GitHub Pages**: Use `gh-pages` package
+
+All hosting options work with Firebase real-time features! 🔥
+
+## �📁 Project Structure
 
 ```
 ├── src/
 │   ├── components/
 │   │   └── ui/
-│   │       └── glsl-hills.tsx    # 3D animated hills background component
-│   ├── App.tsx                    # Main showcase component
-│   ├── main.tsx                   # Application entry point
-│   ├── index.css                  # Tailwind CSS v4 styles with theme variables
-│   └── vite-env.d.ts              # Vite TypeScript definitions
-├── index.html                     # HTML template
+│   │       ├── glsl-hills.tsx           # 3D animated hills background
+│   │       ├── email-client-card.tsx    # Confession card component
+│   │       ├── avatar.tsx               # Avatar component
+│   │       ├── button.tsx               # Button component  
+│   │       └── input.tsx                # Input component
+│   ├── lib/
+│   │   ├── firebase.ts          # Firebase configuration
+│   │   ├── firestore.ts         # Firestore service functions
+│   │   └── utils.ts             # Utility functions (cn helper)
+│   ├── App.tsx                  # Main application component
+│   ├── main.tsx                 # Application entry point
+│   ├── index.css                # Tailwind CSS v4 styles
+│   └── vite-env.d.ts            # Vite TypeScript definitions
+├── FIREBASE_SETUP.md            # Firebase setup instructions
+├── REALTIME_FEATURES.md         # Real-time features documentation
+├── index.html                   # HTML template
 ├── vite.config.ts                 # Vite configuration
 ├── tsconfig.json                  # TypeScript configuration
 └── package.json                   # Dependencies and scripts
