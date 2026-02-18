@@ -671,7 +671,7 @@ const DynamicPizzaBackground = () => {
               <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mb-8 bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10"
+                className="mb-8 max-w-5xl mx-auto bg-black/60 backdrop-blur-sm rounded-xl p-8 border border-white/20 shadow-2xl"
               >
                 <h2 className="text-xl font-light text-white mb-4" style={{ fontFamily: 'Raleway, sans-serif' }}>
                   Share Your Confession (1 🍕 token)

@@ -6,10 +6,9 @@ import { cn } from '@/lib/utils';
 // ShadCN UI Primitives
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 
 const cardVariants = cva(
-  'w-full max-w-2xl mx-auto rounded-xl border bg-card text-card-foreground shadow-sm flex flex-col transition-colors',
+  'w-full max-w-5xl mx-auto rounded-xl border border-white/10 bg-black/80 backdrop-blur-md text-white shadow-2xl flex flex-col transition-colors min-h-[300px]',
   {
     variants: {
       isExpanded: {
@@ -57,8 +56,6 @@ const EmailClientCard = React.forwardRef<HTMLDivElement, EmailClientCardProps>(
     },
     ref,
   ) => {
-    const [inputValue, setInputValue] = React.useState('');
-
     const containerVariants = {
       hidden: { opacity: 0, y: 20 },
       visible: {
@@ -89,19 +86,19 @@ const EmailClientCard = React.forwardRef<HTMLDivElement, EmailClientCardProps>(
       >
         {/* Card Header */}
         <motion.div
-          className="p-4 sm:p-6 flex items-start gap-4 border-b"
+          className="p-6 sm:p-8 flex items-start gap-4 border-b border-white/20"
           variants={itemVariants}
         >
-          <Avatar className="w-10 h-10 border">
+          <Avatar className="w-12 h-12 border border-orange-500/50">
             <AvatarImage src={avatarSrc} alt={senderName} />
             <AvatarFallback>{avatarFallback}</AvatarFallback>
           </Avatar>
           <div className="flex-grow">
-            <p className="font-semibold text-card-foreground">{senderName}</p>
-            <p className="text-sm text-muted-foreground">{senderEmail}</p>
+            <p className="font-semibold text-white text-lg">{senderName}</p>
+            <p className="text-sm text-gray-400">{senderEmail}</p>
           </div>
-          <div className="flex items-center gap-1 text-muted-foreground">
-            <span className="text-xs hidden sm:inline">{timestamp}</span>
+          <div className="flex items-center gap-1 text-gray-400">
+            <span className="text-sm hidden sm:inline">{timestamp}</span>
             {actions.map((action, index) => (
               <motion.div
                 key={index}
@@ -111,7 +108,7 @@ const EmailClientCard = React.forwardRef<HTMLDivElement, EmailClientCardProps>(
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="w-8 h-8"
+                  className="w-9 h-9 text-gray-300 hover:text-white hover:bg-white/10"
                   onClick={() => onActionClick?.(index)}
                   aria-label={`Action ${index + 1}`}
                 >
@@ -124,45 +121,36 @@ const EmailClientCard = React.forwardRef<HTMLDivElement, EmailClientCardProps>(
 
         {/* Card Body */}
         <motion.div
-          className="p-4 sm:p-6 text-sm text-foreground/90 leading-relaxed"
+          className="p-6 sm:p-8 text-base text-gray-200 leading-relaxed flex-grow"
           variants={itemVariants}
         >
-          <p>{message}</p>
+          <p className="font-mono">{message}</p>
         </motion.div>
 
-        {/* Card Footer with Reply */}
+        {/* Card Footer with Reactions */}
         <motion.div
-          className="p-3 sm:p-4 mt-auto border-t bg-muted/50"
+          className="p-4 sm:p-6 mt-auto border-t border-white/20 bg-black/40"
           variants={itemVariants}
         >
-          <div className="flex items-center gap-2">
-            <Input
-              type="text"
-              placeholder="Type here..."
-              className="flex-grow bg-background focus-visible:ring-1 focus-visible:ring-offset-0"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-            />
-            <div className="flex items-center gap-1">
-              {reactions.map((reaction, index) => (
-                <motion.div
-                  key={index}
-                  whileHover={{ scale: 1.2, rotate: -5 }}
-                  whileTap={{ scale: 0.9 }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+          <div className="flex items-center gap-2 justify-center">
+            {reactions.map((reaction, index) => (
+              <motion.div
+                key={index}
+                whileHover={{ scale: 1.2, rotate: -5 }}
+                whileTap={{ scale: 0.9 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+              >
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="w-10 h-10 text-2xl hover:bg-white/10"
+                  onClick={() => onReactionClick?.(reaction)}
+                  aria-label={`React with ${reaction}`}
                 >
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="w-8 h-8 text-xl"
-                    onClick={() => onReactionClick?.(reaction)}
-                    aria-label={`React with ${reaction}`}
-                  >
-                    {reaction}
-                  </Button>
-                </motion.div>
-              ))}
-            </div>
+                  {reaction}
+                </Button>
+              </motion.div>
+            ))}
           </div>
         </motion.div>
       </motion.div>
