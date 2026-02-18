@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Pizza, ChevronDown, ThumbsUp, ThumbsDown, MessageCircle, Trophy, Send, X, User } from 'lucide-react';
+import { Pizza, ChevronDown, ThumbsUp, ThumbsDown, MessageCircle, Trophy, Send, X } from 'lucide-react';
 import { GLSLHills } from '@/components/ui/glsl-hills';
 import { EmailClientCard } from '@/components/ui/email-client-card';
 import {
@@ -178,8 +178,6 @@ const ConfessionCard: React.FC<{
       onVote(confession.id, 'down');
     }
   };
-
-  const engagement = confession.upvotes + confession.downvotes + confession.replies.length;
 
   return (
     <motion.div
