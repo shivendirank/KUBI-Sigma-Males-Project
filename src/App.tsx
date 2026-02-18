@@ -307,8 +307,6 @@ const DynamicPizzaBackground = () => {
       const myReward = rewards.get(userId) || 0;
       setEngagementBonus(myReward);
       
-      // Apply bonus tokens to user's total (but don't stack indefinitely)
-      const baseTokens = getUserPizzaTokens();
       if (myReward > 0) {
         console.log(`🎉 Engagement bonus: +${myReward} pizza tokens!`);
       }
@@ -418,10 +416,6 @@ const DynamicPizzaBackground = () => {
     };
     return confession.upvotes + confession.downvotes + countReplies(confession.replies);
   };
-
-  const topConfessions = [...confessions]
-    .sort((a, b) => getEngagement(b) - getEngagement(a))
-    .slice(0, 5);
 
   // Calculate top authors (users) by total engagement
   const getTopAuthors = () => {
