@@ -27,6 +27,7 @@ export interface Confession {
   downvotes: number;
   replies: Reply[];
   userVote: 'up' | 'down' | null;
+  authorId?: string;
 }
 
 // Helper to convert Firestore timestamp to Date
@@ -79,7 +80,7 @@ export const listenToConfessions = (
 };
 
 // Add a new confession
-export const addConfession = async (text: string): Promise<string> => {
+export const addConfession = async (text: string, authorId: string): Promise<string> => {
   try {
     const docRef = await addDoc(collection(db, 'confessions'), {
       text,
@@ -87,6 +88,7 @@ export const addConfession = async (text: string): Promise<string> => {
       upvotes: 0,
       downvotes: 0,
       replies: [],
+      authorId,
     });
     return docRef.id;
   } catch (error) {
@@ -203,4 +205,44 @@ export const updateUserVote = (confessionId: string, vote: 'up' | 'down'): void 
   const votes = getUserVotes();
   votes[confessionId] = vote;
   localStorage.setItem('userVotes', JSON.stringify(votes));
+};
+
+// Get or create unique user ID
+export const getUserId = (): string => {
+  let userId = localStorage.getItem('userId');
+  if (!userId) {
+    userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    localStorage.setItem('userId', userId);
+  }
+  return userId;
+};
+
+// Calculate engagement rewards for top authors
+export const calculateEngagementRewards = (confessions: Confession[]): Map<string, number> => {
+  // Calculate total engagement per author
+  const authorEngagement = new Map<string, number>();
+  
+  const countReplies = (replies: Reply[]): number => {
+    return replies.reduce((acc, reply) => acc + 1 + countReplies(reply.replies), 0);
+  };
+  
+  confessions.forEach(confession => {
+    if (confession.authorId) {
+      const engagement = confession.upvotes + confession.downvotes + countReplies(confession.replies);
+      const currentTotal = authorEngagement.get(confession.authorId) || 0;
+      authorEngagement.set(confession.authorId, currentTotal + engagement);
+    }
+  });
+  
+  // Sort authors by engagement
+  const sortedAuthors = Array.from(authorEngagement.entries())
+    .sort((a, b) => b[1] - a[1]);
+  
+  // Award tokens: #1 gets 3, #2 gets 2, #3 gets 1
+  const rewards = new Map<string, number>();
+  if (sortedAuthors[0]) rewards.set(sortedAuthors[0][0], 3);
+  if (sortedAuthors[1]) rewards.set(sortedAuthors[1][0], 2);
+  if (sortedAuthors[2]) rewards.set(sortedAuthors[2][0], 1);
+  
+  return rewards;
 };

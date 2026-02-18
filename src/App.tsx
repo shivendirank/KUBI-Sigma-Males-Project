@@ -13,6 +13,8 @@ import {
   updateUserPizzaTokens,
   getUserVotes,
   updateUserVote,
+  getUserId,
+  calculateEngagementRewards,
 } from '@/lib/firestore';
 import type { Confession, Reply } from '@/lib/firestore';
 
@@ -282,6 +284,8 @@ const DynamicPizzaBackground = () => {
   const [showWallOfFame, setShowWallOfFame] = useState(false);
   const [userVotes, setUserVotes] = useState<Record<string, 'up' | 'down'>>(() => getUserVotes());
   const [isFirebaseConnected, setIsFirebaseConnected] = useState(false);
+  const [userId] = useState(() => getUserId());
+  const [engagementBonus, setEngagementBonus] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Real-time Firestore listener
@@ -290,19 +294,31 @@ const DynamicPizzaBackground = () => {
     const unsubscribe = listenToConfessions((newConfessions) => {
       console.log(`✅ Received ${newConfessions.length} confessions from Firestore`);
       setIsFirebaseConnected(true);
+      
       // Apply user votes to confessions
       const confessionsWithVotes = newConfessions.map(confession => ({
         ...confession,
         userVote: userVotes[confession.id] || null,
       }));
       setConfessions(confessionsWithVotes);
+      
+      // Calculate engagement rewards for top authors
+      const rewards = calculateEngagementRewards(newConfessions);
+      const myReward = rewards.get(userId) || 0;
+      setEngagementBonus(myReward);
+      
+      // Apply bonus tokens to user's total (but don't stack indefinitely)
+      const baseTokens = getUserPizzaTokens();
+      if (myReward > 0) {
+        console.log(`🎉 Engagement bonus: +${myReward} pizza tokens!`);
+      }
     });
 
     return () => {
       console.log('🔌 Disconnecting from Firestore');
       unsubscribe();
     };
-  }, [userVotes]);
+  }, [userVotes, userId]);
 
   // Update pizza tokens in localStorage when changed
   useEffect(() => {
@@ -341,11 +357,13 @@ const DynamicPizzaBackground = () => {
   };
 
   const handlePostConfession = async () => {
-    if (newConfession.trim() && pizzaTokens > 0) {
+    const totalTokens = pizzaTokens + engagementBonus;
+    if (newConfession.trim() && totalTokens > 0) {
       try {
-        await addConfession(newConfession);
+        await addConfession(newConfession, userId);
         setNewConfession('');
-        setPizzaTokens(pizzaTokens - 1);
+        // Deduct from base tokens first
+        setPizzaTokens(Math.max(0, pizzaTokens - 1));
       } catch (error) {
         console.error('Failed to post confession:', error);
         alert('Failed to post confession. Please check your Firebase configuration.');
@@ -404,6 +422,30 @@ const DynamicPizzaBackground = () => {
   const topConfessions = [...confessions]
     .sort((a, b) => getEngagement(b) - getEngagement(a))
     .slice(0, 5);
+
+  // Calculate top authors (users) by total engagement
+  const getTopAuthors = () => {
+    const authorStats = new Map<string, { engagement: number; confessions: Confession[] }>();
+    
+    confessions.forEach(confession => {
+      if (confession.authorId) {
+        const engagement = getEngagement(confession);
+        const current = authorStats.get(confession.authorId) || { engagement: 0, confessions: [] };
+        authorStats.set(confession.authorId, {
+          engagement: current.engagement + engagement,
+          confessions: [...current.confessions, confession]
+        });
+      }
+    });
+
+    return Array.from(authorStats.entries())
+      .map(([authorId, stats]) => ({ authorId, ...stats }))
+      .sort((a, b) => b.engagement - a.engagement)
+      .slice(0, 3);
+  };
+
+  const topAuthors = getTopAuthors();
+  const rewards = [3, 2, 1]; // Tokens for positions 1, 2, 3
 
   return (
     <div className="relative w-full min-h-screen overflow-hidden cursor-none bg-black">
@@ -653,7 +695,22 @@ const DynamicPizzaBackground = () => {
                     <Pizza className="w-5 h-5 text-orange-500" />
                     <div className="text-left">
                       <div className="text-xs text-gray-400">Pizza Tokens</div>
-                      <div className="text-sm font-mono text-white">{pizzaTokens}</div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg font-mono text-white font-bold">{pizzaTokens + engagementBonus}</span>
+                        {engagementBonus > 0 && (
+                          <motion.span
+                            initial={{ scale: 0, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            transition={{ type: 'spring', stiffness: 500 }}
+                            className="text-xs font-bold text-green-400 bg-green-500/20 px-2 py-0.5 rounded-full border border-green-400/30"
+                          >
+                            +{engagementBonus}🔥
+                          </motion.span>
+                        )}
+                      </div>
+                      {engagementBonus > 0 && (
+                        <div className="text-[10px] text-green-400 mt-0.5">Top engagement bonus!</div>
+                      )}
                     </div>
                   </div>
 
@@ -682,18 +739,18 @@ const DynamicPizzaBackground = () => {
                     onChange={(e) => setNewConfession(e.target.value)}
                     placeholder="Type your anonymous confession here..."
                     className="flex-1 bg-black/50 border border-white/20 rounded-lg px-4 py-3 text-white resize-none focus:outline-none focus:ring-2 focus:ring-orange-500/50 min-h-[100px] font-mono"
-                    disabled={pizzaTokens === 0}
+                    disabled={pizzaTokens + engagementBonus === 0}
                   />
                   <button
                     onClick={handlePostConfession}
-                    disabled={!newConfession.trim() || pizzaTokens === 0}
+                    disabled={!newConfession.trim() || pizzaTokens + engagementBonus === 0}
                     className="px-6 py-3 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-600 disabled:opacity-50 rounded-lg transition-colors font-light text-white h-fit"
                   >
                     <Send className="w-5 h-5" />
                   </button>
                 </div>
-                {pizzaTokens === 0 && (
-                  <p className="text-red-400 text-sm mt-2">You're out of pizza tokens!</p>
+                {pizzaTokens + engagementBonus === 0 && (
+                  <p className="text-red-400 text-sm mt-2">You're out of pizza tokens! Get more by creating engaging confessions!</p>
                 )}
               </motion.div>
 
@@ -729,42 +786,75 @@ const DynamicPizzaBackground = () => {
                         </button>
                       </div>
 
-                      <p className="text-gray-300 mb-6">Top confessions by engagement (votes + replies)</p>
+                      <p className="text-gray-300 mb-2">Top authors by total engagement</p>
+                      <p className="text-yellow-200 text-sm mb-6">🏆 Rewards: #1 gets 3 🍕 | #2 gets 2 🍕 | #3 gets 1 🍕</p>
 
                       <div className="space-y-6">
-                        {topConfessions.length === 0 ? (
+                        {topAuthors.length === 0 ? (
                           <p className="text-gray-400 text-center py-12">No confessions yet. Be the first!</p>
                         ) : (
-                          topConfessions.map((confession, index) => (
-                            <motion.div
-                              key={confession.id}
-                              initial={{ opacity: 0, x: -20 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: index * 0.1 }}
-                              className="relative"
-                            >
-                              <div className="absolute -left-4 -top-4 w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center font-bold text-black text-xl">
-                                #{index + 1}
-                              </div>
-                              <div className="bg-black/40 rounded-lg p-6 border border-yellow-500/30 ml-4">
-                                <p className="text-white mb-3 font-mono">{confession.text}</p>
-                                <div className="flex items-center gap-4 text-sm text-gray-300">
-                                  <span className="flex items-center gap-1">
-                                    <ThumbsUp className="w-4 h-4" /> {confession.upvotes}
-                                  </span>
-                                  <span className="flex items-center gap-1">
-                                    <ThumbsDown className="w-4 h-4" /> {confession.downvotes}
-                                  </span>
-                                  <span className="flex items-center gap-1">
-                                    <MessageCircle className="w-4 h-4" /> {confession.replies.length}
-                                  </span>
-                                  <span className="ml-auto text-orange-400 font-semibold">
-                                    {getEngagement(confession)} engagement
-                                  </span>
+                          topAuthors.map((author, index) => {
+                            const isCurrentUser = author.authorId === userId;
+                            const reward = rewards[index];
+                            return (
+                              <motion.div
+                                key={author.authorId}
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: index * 0.1 }}
+                                className="relative"
+                              >
+                                <div className={`absolute -left-4 -top-4 w-14 h-14 rounded-full flex items-center justify-center font-bold text-black text-xl shadow-lg ${
+                                  index === 0 ? 'bg-gradient-to-br from-yellow-300 to-yellow-500' :
+                                  index === 1 ? 'bg-gradient-to-br from-gray-300 to-gray-400' :
+                                  'bg-gradient-to-br from-orange-400 to-orange-600'
+                                }`}>
+                                  #{index + 1}
                                 </div>
-                              </div>
-                            </motion.div>
-                          ))
+                                <div className={`rounded-lg p-6 border-2 ml-6 ${
+                                  isCurrentUser 
+                                    ? 'bg-green-900/40 border-green-400/50 shadow-green-500/20 shadow-xl' 
+                                    : 'bg-black/40 border-yellow-500/30'
+                                }`}>
+                                  <div className="flex items-start justify-between mb-4">
+                                    <div className="flex-grow">
+                                      <div className="flex items-center gap-3 mb-2">
+                                        <h3 className="text-white font-semibold text-lg">
+                                          {isCurrentUser ? '👑 YOU' : `User ${author.authorId.slice(-8)}`}
+                                        </h3>
+                                        <motion.div
+                                          initial={{ scale: 0, rotate: -180 }}
+                                          animate={{ scale: 1, rotate: 0 }}
+                                          transition={{ type: 'spring', stiffness: 300 }}
+                                          className="bg-orange-500/30 border-2 border-orange-400 rounded-full px-3 py-1 flex items-center gap-1"
+                                        >
+                                          <Pizza className="w-4 h-4 text-orange-400" />
+                                          <span className="text-orange-200 font-bold text-sm">+{reward}</span>
+                                        </motion.div>
+                                      </div>
+                                      <div className="flex items-center gap-4 text-sm text-gray-300">
+                                        <span className="text-orange-400 font-semibold text-base">
+                                          {author.engagement} total engagement
+                                        </span>
+                                        <span className="text-gray-400">
+                                          {author.confessions.length} confession{author.confessions.length !== 1 ? 's' : ''}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Show top confession from this author */}
+                                  <div className="mt-4 pt-4 border-t border-white/10">
+                                    <p className="text-xs text-gray-400 mb-2">Top confession:</p>
+                                    <p className="text-white text-sm font-mono italic">
+                                      "{author.confessions.sort((a, b) => getEngagement(b) - getEngagement(a))[0].text.slice(0, 100)}
+                                      {author.confessions[0].text.length > 100 ? '...' : ''}"
+                                    </p>
+                                  </div>
+                                </div>
+                              </motion.div>
+                            );
+                          })
                         )}
                       </div>
                     </motion.div>
